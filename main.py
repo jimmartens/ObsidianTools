@@ -54,6 +54,18 @@ def get_start_day_of_week(date_in_week=None, start_day=None):
     start_day = date_in_week - timedelta(days=date_in_week.weekday() + mod)
     return start_day.strftime('%Y-%m-%d')
 
+def get_start_day_of_month(date_in_month=None):
+    if date_in_month is None:
+        date_in_month = datetime.now()
+    else:
+        date_in_month = datetime.strptime(date_in_month, '%Y-%m-%d')
+    if start_day is "Sun": # TODO: Not sure if this is correct.
+        mod = 1
+    else:
+        mod = 0
+    start_day = date_in_month - timedelta(days=date_in_month.day + mod - 1)
+    return start_day.strftime('%Y-%m-%d')
+
 # Iterate through a list of files and build a list of unique Headers based on the number of #s in the header.
 def get_unique_headers(files):
     headers = set()
@@ -85,45 +97,74 @@ def get_files_for_week(folder, week_start_date=None, start_day=None):
     print(f'start: {week_start_date} end {week_end_date}:')
     week_files = []
     for file in os.listdir(folder):
-        if file.endswith('.md') and not file.startswith('Summary_'): # TODO: this should go away as the file should be written to a weekly folder.
-            print(f'file: {file}')
+        if file.endswith('.md') and not file.startswith('Summary_'):
             file_date = datetime.strptime(file.split('_')[0].split('.')[0], '%Y-%m-%d')
             if week_start_date <= file_date <= week_end_date:
-                week_files.append(file)
-    return week_files #[file for file in os.listdir(folder) if week_start_date <= datetime.strptime(file.split('_')[0].split('.')[0], '%Y-%m-%d') <= week_end_date]
+                week_files.append(folder + file)
+    week_files.sort()
+    return week_files
 
-# Problem here is that I would then have to iterate through the directory again, because I am only storying the file name. 
-# I could instead call them from here.  
-# Can I sort the files first?
+def get_files_for_month(folder, month_start_date=None, start_day=None):
+    month_start_date_str = get_start_day_of_week(month_start_date, start_day) # TODO: Change this to get the first day of the month
+    month_start_date = datetime.strptime(month_start_date_str, '%Y-%m-%d')
+    month_end_date = month_start_date + timedelta(days=30)
+    print(f'start: {month_start_date} end {month_end_date}:')
+    month_files = []
+    for file in os.listdir(folder):
+        if file.endswith('.md') and not file.startswith('Summary_'):
+            file_date = datetime.strptime(file.split('_')[0].split('.')[0], '%Y-%m-%d')
+            if month_start_date <= file_date <= month_end_date:
+                month_files.append(folder + file)
+    month_files.sort()
 
-
-# Summarize weekly collection of tags or headers.  
 # Format of #tag or # header_name
-def weekly_summary(folder, search_string, week_files=None, day_in_week=None, start_day=None):
-    # Create or overwrite a Summary File for the week 
-    week_start_date = get_start_day_of_week(day_in_week, start_day) # Seems redundant.
+# Should be able to summarize week/month/year.
+def summary(folder, files, search_string, summary_type, start_date):
     
-    summary_file = os.path.join(folder, f'Summary_{get_start_day_of_week(week_start_date, start_day)}.md')
-    
+    folder = folder + '/' + summary_type
+    if not os.path.exists(folder):
+        os.mkdir(folder)
+    summary_file = os.path.join(folder, f'{summary_type}Summary_{start_date}.md')
+            
+    if len(files) == 0:
+        print(f'No files found for this {summary_type}.')
+        return 0
+        
     # Write a header to Summary File
     if os.path.exists(summary_file):
         os.remove(summary_file)
-        with open(summary_file, 'w') as f:
-            f.write(f'# Weekly Summary for {search_string} - {get_start_day_of_week(week_start_date, start_day)}\n')
+        f = open(summary_file, 'w')
+        f.write(f'# Weekly Summary for {search_string} - {start_date}\n')
     else:
-        with open(summary_file, 'w') as f:
-            f.write(f'# Weekly Summary for {search_string} - {get_start_day_of_week(week_start_date, start_day)}\n')
-    
-    ''' 
+        f = open(summary_file, 'w')
+        f.write(f'# Weekly Summary for {search_string} - {start_date}\n')
+     
     # Iterate through files and add/remove tags/headers as necessary
-    for file in week_files:
-        if search_string in file:
-            print(f'Weekly Summary for {search_string} in {file}:')
-            modify_file(os.path.join(folder, file))
-            # weekly_summary_helper(os.path.join(folder, file), search_string)
-        else:
-            print('No tag or header found.')
-    '''
+    for file in files:
+        with open(file, 'r') as f_read:
+            content = f_read.read()
+            if search_string in content:
+                f.write(f'\n## search string \'{search_string}\' found in  {file}\n')
+                f_read.seek(0)
+                in_search_block = False
+
+                while True:
+                    line = f_read.readline()
+                    if not line:
+                        break
+                    if in_search_block:
+                        # check to see if this line starts with '##'  
+                        if line.startswith('## '):
+                            in_search_block = False
+                        else:
+                            f.write(line)
+                    if search_string in line:
+                        in_search_block = True
+                        #f.write(line)
+
+            else:
+                f.write(f'\n## search string \'{search_string}\' not found in {file}\n')
+    
     f.close()
     return 0
 
@@ -135,14 +176,6 @@ def list_files_for_current_and_sub_dirs():
                 print(os.path.join(root, file))
     return 0    
 
-def read_files_current_dir():
-    files = os.listdir()
-    mdfiles = []
-    for file in files:
-        if file.endswith('.md'):
-            mdfiles.append(file)
-    return mdfiles
-
 # Read in Arguments
 args = sys.argv
 if len(args) > 1:
@@ -151,17 +184,20 @@ else:
     folder = '.'
 
 def main():
-    # files = read_files_current_dir()
-    # print(f'Moving {len(files)} files...')
-    # list_files_for_current_and_sub_dirs()
     print(f'Sunday of this week: {get_start_day_of_week(start_day="Sun")}')
-    randomDate = "2024-11-20" #should be 10/6 if Sun is selected
-    print(f'Show entries for {randomDate} ')
-    print(f'Sunday for {randomDate}: is {get_start_day_of_week(randomDate, start_day="Sun")}')
+    random_date = "2024-11-20" #should be 10/6 if Sun is selected
+    print(f'Show entries for {random_date} ')
+    print(f'Sunday for {random_date}: is {get_start_day_of_week(random_date, start_day="Sun")}')
     
-    print(get_files_for_week('.', randomDate, start_day="Sun"))
+    folder = 'test_files/jm/'
+
+    weekly_files = get_files_for_week(folder, random_date, start_day="Sun")
+    print(get_files_for_week(folder, random_date, start_day="Sun"))
     
-    weekly_summary('.', '#fun')
+    # Summary for week
+    summary(folder, weekly_files, '## search string', 'weekly', get_start_day_of_week(random_date, start_day="Sun"))
+
+    # Summary for month
     
     print('Done!')
     return 0

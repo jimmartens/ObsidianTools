@@ -121,6 +121,10 @@ def get_files_for_month(folder, month_start_date=None, start_day=None):
 # Should be able to summarize week/month/year.
 def summary(folder, files, search_string, summary_type, start_date):
     
+    # Set end string to leading #^n from the search string
+    index = search_string.find('# ')
+    end_string = search_string[:index+2]
+    
     folder = folder + '/' + summary_type
     if not os.path.exists(folder):
         os.mkdir(folder)
@@ -144,7 +148,7 @@ def summary(folder, files, search_string, summary_type, start_date):
         with open(file, 'r') as f_read:
             content = f_read.read()
             if search_string in content:
-                f.write(f'\n## search string \'{search_string}\' found in  {file}\n')
+                f.write(f'## Results from: {file}\n')
                 f_read.seek(0)
                 in_search_block = False
 
@@ -154,7 +158,7 @@ def summary(folder, files, search_string, summary_type, start_date):
                         break
                     if in_search_block:
                         # check to see if this line starts with '##'  
-                        if line.startswith('## '):
+                        if line.startswith(end_string):
                             in_search_block = False
                         else:
                             f.write(line)
@@ -162,8 +166,8 @@ def summary(folder, files, search_string, summary_type, start_date):
                         in_search_block = True
                         #f.write(line)
 
-            else:
-                f.write(f'\n## search string \'{search_string}\' not found in {file}\n')
+            #else:
+            #    f.write(f'## Not found in: {file}\n')
     
     f.close()
     return 0

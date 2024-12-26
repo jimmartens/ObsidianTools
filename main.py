@@ -117,6 +117,9 @@ def get_files_for_month(folder, month_start_date=None, start_day=None):
                 month_files.append(folder + file)
     month_files.sort()
 
+''' NOTES:
+- Change File Name to YYYY-MM-DD_summary_searchstring.md - Remove any # from the file name
+'''
 # Format of #tag or # header_name
 # Should be able to summarize week/month/year.
 def summary(folder, files, search_string, summary_type, start_date):
@@ -128,7 +131,7 @@ def summary(folder, files, search_string, summary_type, start_date):
     folder = folder + '/' + summary_type
     if not os.path.exists(folder):
         os.mkdir(folder)
-    summary_file = os.path.join(folder, f'{summary_type}Summary_{start_date}.md')
+    summary_file = os.path.join(folder, f'{start_date}_summary_{search_string}.md')
             
     if len(files) == 0:
         print(f'No files found for this {summary_type}.')
@@ -138,10 +141,10 @@ def summary(folder, files, search_string, summary_type, start_date):
     if os.path.exists(summary_file):
         os.remove(summary_file)
         f = open(summary_file, 'w')
-        f.write(f'# Weekly Summary for {search_string} - {start_date}\n')
+        f.write(f'# Weekly Summary for \'{search_string}\' - {start_date}\n')
     else:
         f = open(summary_file, 'w')
-        f.write(f'# Weekly Summary for {search_string} - {start_date}\n')
+        f.write(f'# Weekly Summary for \'{search_string}\' - {start_date}\n')
      
     # Iterate through files and add/remove tags/headers as necessary
     for file in files:
@@ -164,28 +167,22 @@ def summary(folder, files, search_string, summary_type, start_date):
                             f.write(line)
                     if search_string in line:
                         in_search_block = True
-                        #f.write(line)
-
-            #else:
-            #    f.write(f'## Not found in: {file}\n')
-    
     f.close()
     return 0
 
-def list_files_for_current_and_sub_dirs():
+#Change it to having a start directory as input, 
+def list_files_for_current_and_sub_dirs(folder='.'):
     current_dir = os.getcwd()
     for root, dirs, files in os.walk(current_dir):
         for file in files:
             if file.endswith('.md'):
                 print(os.path.join(root, file))
+    # Should return a list of all files in the current directory and its subdirectories.
     return 0    
 
-# Read in Arguments
-args = sys.argv
-if len(args) > 1:
-    folder = args[1]
-else:
-    folder = '.'
+# Add a tag or tags to all files in a directory and its subdirectories
+def add_tag_to_files(folder, tags, start_day=None):
+    return None
 
 def main():
     print(f'Sunday of this week: {get_start_day_of_week(start_day="Sun")}')
@@ -202,6 +199,8 @@ def main():
     summary(folder, weekly_files, '## search string', 'weekly', get_start_day_of_week(random_date, start_day="Sun"))
 
     # Summary for month
+
+    #list_files_for_current_and_sub_dirs()
     
     print('Done!')
     return 0

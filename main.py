@@ -8,8 +8,8 @@ A group of methods to:
 All files in folder are date based with the format YYYY-MM-DD.md
 '''
 import os
-import sys
 from datetime import datetime, timedelta
+import argparse
 
 tags_to_add = [ '#fun', '#learning']
 strings_to_remove = [ '{{title}}' ]
@@ -47,7 +47,7 @@ def get_start_day_of_week(date_in_week=None, start_day=None):
         date_in_week = datetime.now()
     else:
         date_in_week = datetime.strptime(date_in_week, '%Y-%m-%d')
-    if start_day is "Sun":
+    if start_day == "Sun":
         mod = 1
     else:
         mod = 0
@@ -59,7 +59,7 @@ def get_start_day_of_month(date_in_month=None):
         date_in_month = datetime.now()
     else:
         date_in_month = datetime.strptime(date_in_month, '%Y-%m-%d')
-    if start_day is "Sun": # TODO: Not sure if this is correct.
+    if start_day == "Sun": # TODO: Not sure if this is correct.
         mod = 1
     else:
         mod = 0
@@ -139,6 +139,9 @@ def summary(folder, files, search_string, summary_type, start_date):
         
     # Write a header to Summary File
     if os.path.exists(summary_file):
+        answer = input(f'Summary file already exists. Do you want to overwrite it? (y/n): ')
+        if answer.lower()!= 'y':
+            return 0
         os.remove(summary_file)
         f = open(summary_file, 'w')
         f.write(f'# Weekly Summary for \'{search_string}\' - {start_date}\n')
@@ -184,25 +187,83 @@ def list_files_for_current_and_sub_dirs(folder='.'):
 def add_tag_to_files(folder, tags, start_day=None):
     return None
 
+def setup_parser():
+    parser = argparse.ArgumentParser(description="Parsing the arguments")
+    parser.add_argument(
+        '--folder', 
+        type=str, 
+        required=False, 
+        default='.', 
+        help='Path to the folder to process (default: current directory)')
+    parser.add_argument(
+        '--mode',
+        choices=['replace', 'sum', 'remove'],
+        default='sum',
+        help='Processing mode to use (default: fast)'
+    )
+    parser.add_argument(
+        '--range',
+        type=str,
+        choices=['week','month', 'quarter', 'year'], 
+        default='week',
+        help='Date range to process.'
+    )
+    parser.add_argument('--start_day', type=str, choices=['Sun', 'Mon'], default='Sun', help='Start day of the week for range (default: Sun)')
+    parser.add_argument('--date', type=str, help='Date to process (if not provided, defaults to current date) format: YYYY-MM-DD')
+    parser.add_argument('--tag', type=str, help='Tag to filter notes for weekly summary')
+    parser.add_argument('--header', type=str, help='Header to filter notes for weekly summary')
+    parser.add_argument('--search_string', type=str, help='String to search for in files format: #tag or # header_name')
+    return parser
+
 def main():
-    print(f'Sunday of this week: {get_start_day_of_week(start_day="Sun")}')
-    random_date = "2024-11-20" #should be 10/6 if Sun is selected
-    print(f'Show entries for {random_date} ')
-    print(f'Sunday for {random_date}: is {get_start_day_of_week(random_date, start_day="Sun")}')
+    parser = setup_parser()
+    args = parser.parse_args()
     
-    folder = 'test_files/jm/'
+    if args.mode =='replace':
+        # Replace files with new content
+        print('Mode not implemented yet')
+        pass
+    elif args.mode =='sum':
+        # Summarize files based on search string
 
-    weekly_files = get_files_for_week(folder, random_date, start_day="Sun")
-    print(get_files_for_week(folder, random_date, start_day="Sun"))
+        if args.date is None:
+            target_date = datetime.now().strftime('%Y-%m-%d')
+        else:
+            target_date = args.date
+        
+        print(f'Show entries for {target_date} ')
+        print(f'Sunday for {target_date}: is {get_start_day_of_week(target_date, start_day=args.start_day)}')
     
-    # Summary for week
-    summary(folder, weekly_files, '## search string', 'weekly', get_start_day_of_week(random_date, start_day="Sun"))
+        if args.folder is None:
+            folder = '.'
+        else:
+            folder = args.folder
 
-    # Summary for month
+        if args.search_string is None:
+            print('Search string is required')
+            return 1
+        else: 
+            search_string = args.search_string
+            
+        weekly_files = get_files_for_week(folder, target_date, start_day=args.start_day)
+        print(get_files_for_week(folder, target_date, start_day=args.start_day))
+           
+        print(f'Searching for: {args.search_string}')
+        summary(folder, weekly_files, search_string, args.range, get_start_day_of_week(target_date, start_day=args.start_day))
+        #summary(args.folder, list_files_for_current_and_sub_dirs(args.folder), args.search_string, args.range, args.date)
+    elif args.mode =='remove':
+        # Remove tags/headers from files
+        print('Mode not implemented yet')
+        pass
+    else:
+        print('Invalid mode')
+        return 1
+         
+    # for test purposes, running the script with some arguments.
+    # python main.py --mode sum --range week --date 2024-11-20 --search_string '## search string' --folder test_files/jm/
+    # Problem here is the space. 
+    # TODO: Get pretty print or something similar to clear on save.  There are some whitespaces in the output currently.
 
-    #list_files_for_current_and_sub_dirs()
-    
-    print('Done!')
     return 0
 
 if __name__ == '__main__':
